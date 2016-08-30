@@ -6,3 +6,6 @@ ipv6proxies:
 
 domain2onion:
     pasta.cf.: pastagdsp33j7aoq.onion.
+
+nameservers:
+    - test-it.ml.

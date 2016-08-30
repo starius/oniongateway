@@ -18,6 +18,9 @@ func TestStaticResolver(t *testing.T) {
 		Domain2Onion: map[string]string{
 			"pasta.cf.": "pastagdsp33j7aoq.onion.",
 		},
+		Nameservers: []string{
+			"example.com.",
+		},
 		AnswerCount: 1,
 	}
 	// IPv4

@@ -38,6 +38,7 @@ func (r *EtcdResolver) watch() {
 	log.Printf("Running etcd watcher of nameserver...")
 	go r.watchFor(&r.ipResolver.IPv4Proxies, "/ipv4/")
 	go r.watchFor(&r.ipResolver.IPv6Proxies, "/ipv6/")
+	go r.watchFor(&r.ipResolver.Nameservers, "/nameservers/")
 }
 
 func (r *EtcdResolver) watchFor(
@@ -121,9 +122,9 @@ func (r *EtcdResolver) Resolve(
 	kv := clientv3.NewKV(r.Client)
 	ctx, cancel := context.WithTimeout(context.Background(), r.Timeout)
 	defer cancel()
+	r.ipResolverMutex.RLock()
+	defer r.ipResolverMutex.RUnlock()
 	if qtype == dns.TypeA || qtype == dns.TypeAAAA {
-		r.ipResolverMutex.RLock()
-		defer r.ipResolverMutex.RUnlock()
 		return r.ipResolver.Resolve(domain, qtype, qclass)
 	} else if qtype == dns.TypeNS {
 		key := fmt.Sprintf("/domain2onion/%s", domain)
@@ -135,12 +136,7 @@ func (r *EtcdResolver) Resolve(
 			return nil, fmt.Errorf("NS request of unknown domain: %q", domain)
 		}
 		onion := string(resp.Kvs[0].Value)
-		nameservers := []string{"example.com."} // FIXME store in etcd
-		result := make([]string, len(nameservers))
-		for i := 0; i < len(nameservers); i++ {
-			result[i] = onion + nameservers[i]
-		}
-		return result, nil
+		return r.ipResolver.MakeNameservers(onion)
 	} else {
 		return nil, fmt.Errorf("Unknown question type: %d", qtype)
 	}

@@ -116,9 +116,10 @@ func TestEtcdResolver(t *testing.T) {
 	}
 	defer closer()
 	data := map[string]string{
-		"/ipv4/127.0.0.1":         "value is not used",
-		"/ipv6/::1":               "value is not used",
-		"/domain2onion/pasta.cf.": "pastagdsp33j7aoq.onion.",
+		"/ipv4/127.0.0.1":           "value is not used",
+		"/ipv6/::1":                 "value is not used",
+		"/domain2onion/pasta.cf.":   "pastagdsp33j7aoq.onion.",
+		"/nameservers/example.com.": "value is not used",
 	}
 	if err = populateDatabase(client, data); err != nil {
 		t.Fatalf("Failed to populate etcd with example data: %s", err)
@@ -133,6 +134,7 @@ func TestEtcdResolver(t *testing.T) {
 		},
 	}
 	resolver.Start()
+	<-changed
 	<-changed
 	<-changed
 	// IPv4

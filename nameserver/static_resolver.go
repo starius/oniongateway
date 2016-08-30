@@ -12,6 +12,7 @@ type StaticResolver struct {
 	IPv4Proxies  []string
 	IPv6Proxies  []string
 	Domain2Onion map[string]string
+	Nameservers  []string
 	AnswerCount  int
 }
 
@@ -40,13 +41,7 @@ func (r *StaticResolver) Resolve(
 		if !ok {
 			return nil, fmt.Errorf("NS request of unknown domain: %q", domain)
 		}
-		// FIXME code repeat with etcd_resolver.go
-		nameservers := []string{"example.com."} // FIXME store in etcd
-		result := make([]string, len(nameservers))
-		for i := 0; i < len(nameservers); i++ {
-			result[i] = onion + nameservers[i]
-		}
-		return result, nil
+		return r.MakeNameservers(onion)
 	} else {
 		return nil, fmt.Errorf("Unknown question type: %d", qtype)
 	}
@@ -54,14 +49,33 @@ func (r *StaticResolver) Resolve(
 	if n == 0 {
 		return nil, fmt.Errorf("No proxies for question of type %d", qtype)
 	}
-	k := r.AnswerCount
-	if n < k {
-		k = n
-	}
+	k := r.roundAnswerCount(n)
 	var result []string
 	for _, i := range randsample.Sample(n, k) {
 		address := proxies[i]
 		result = append(result, address)
+	}
+	return result, nil
+}
+
+func (r *StaticResolver) roundAnswerCount(n int) int {
+	if n < r.AnswerCount {
+		return n
+	}
+	return r.AnswerCount
+}
+
+// MakeNameservers makes hostnames of nameservers for given onion (FQDN)
+func (r *StaticResolver) MakeNameservers(onion string) ([]string, error) {
+	n := len(r.Nameservers)
+	if n == 0 {
+		return nil, fmt.Errorf("No known nameservers")
+	}
+	k := r.roundAnswerCount(n)
+	var result []string
+	for _, i := range randsample.Sample(n, k) {
+		ns := onion + r.Nameservers[i]
+		result = append(result, ns)
 	}
 	return result, nil
 }
