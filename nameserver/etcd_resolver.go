@@ -138,7 +138,7 @@ func (r *EtcdResolver) Resolve(
 		nameservers := []string{"example.com."} // FIXME store in etcd
 		result := make([]string, len(nameservers))
 		for i := 0; i < len(nameservers); i++ {
-			result[i] = fmt.Sprintf("%s.%s", onion, nameservers[i])
+			result[i] = onion + nameservers[i]
 		}
 		return result, nil
 	} else {

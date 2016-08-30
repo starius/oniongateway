@@ -118,7 +118,7 @@ func TestEtcdResolver(t *testing.T) {
 	data := map[string]string{
 		"/ipv4/127.0.0.1":         "value is not used",
 		"/ipv6/::1":               "value is not used",
-		"/domain2onion/pasta.cf.": "pastagdsp33j7aoq.onion",
+		"/domain2onion/pasta.cf.": "pastagdsp33j7aoq.onion.",
 	}
 	if err = populateDatabase(client, data); err != nil {
 		t.Fatalf("Failed to populate etcd with example data: %s", err)

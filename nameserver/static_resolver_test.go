@@ -16,7 +16,7 @@ func TestStaticResolver(t *testing.T) {
 			"::1",
 		},
 		Domain2Onion: map[string]string{
-			"pasta.cf.": "pastagdsp33j7aoq.onion",
+			"pasta.cf.": "pastagdsp33j7aoq.onion.",
 		},
 		AnswerCount: 1,
 	}
