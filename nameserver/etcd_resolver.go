@@ -20,8 +20,8 @@ type EtcdResolver struct {
 	AnswerCount       int
 	NotifyChangedFunc func(added bool, key string)
 
-	ipResolver      StaticResolver
-	ipResolverMutex sync.RWMutex
+	staticResolver      StaticResolver
+	staticResolverMutex sync.RWMutex
 }
 
 // Start gets current lists of addresses and starts watching for updates
@@ -29,16 +29,16 @@ func (r *EtcdResolver) Start() {
 	if r.AnswerCount == 0 {
 		panic("EtcdResolver: set AnswerCount")
 	}
-	r.ipResolver.AnswerCount = r.AnswerCount
-	r.ipResolver.Start()
+	r.staticResolver.AnswerCount = r.AnswerCount
+	r.staticResolver.Start()
 	go r.watch()
 }
 
 func (r *EtcdResolver) watch() {
 	log.Printf("Running etcd watcher of nameserver...")
-	go r.watchFor(&r.ipResolver.IPv4Proxies, "/ipv4/")
-	go r.watchFor(&r.ipResolver.IPv6Proxies, "/ipv6/")
-	go r.watchFor(&r.ipResolver.Nameservers, "/nameservers/")
+	go r.watchFor(&r.staticResolver.IPv4Proxies, "/ipv4/")
+	go r.watchFor(&r.staticResolver.IPv6Proxies, "/ipv6/")
+	go r.watchFor(&r.staticResolver.Nameservers, "/nameservers/")
 }
 
 func (r *EtcdResolver) watchFor(
@@ -74,8 +74,8 @@ func (r *EtcdResolver) processEvent(
 	address2index map[string]int,
 	event *clientv3.Event,
 ) {
-	r.ipResolverMutex.Lock()
-	defer r.ipResolverMutex.Unlock()
+	r.staticResolverMutex.Lock()
+	defer r.staticResolverMutex.Unlock()
 	key := string(event.Kv.Key)
 	address := path.Base(key)
 	if event.Type == mvccpb.PUT {
@@ -122,10 +122,10 @@ func (r *EtcdResolver) Resolve(
 	kv := clientv3.NewKV(r.Client)
 	ctx, cancel := context.WithTimeout(context.Background(), r.Timeout)
 	defer cancel()
-	r.ipResolverMutex.RLock()
-	defer r.ipResolverMutex.RUnlock()
+	r.staticResolverMutex.RLock()
+	defer r.staticResolverMutex.RUnlock()
 	if qtype == dns.TypeA || qtype == dns.TypeAAAA {
-		return r.ipResolver.Resolve(domain, qtype, qclass)
+		return r.staticResolver.Resolve(domain, qtype, qclass)
 	} else if qtype == dns.TypeNS {
 		key := fmt.Sprintf("/domain2onion/%s", domain)
 		resp, err := kv.Get(ctx, key)
@@ -136,7 +136,7 @@ func (r *EtcdResolver) Resolve(
 			return nil, fmt.Errorf("NS request of unknown domain: %q", domain)
 		}
 		onion := string(resp.Kvs[0].Value)
-		return r.ipResolver.MakeNameservers(onion)
+		return r.staticResolver.MakeNameservers(onion)
 	} else {
 		return nil, fmt.Errorf("Unknown question type: %d", qtype)
 	}
