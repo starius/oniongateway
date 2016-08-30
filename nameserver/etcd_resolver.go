@@ -125,18 +125,22 @@ func (r *EtcdResolver) Resolve(
 		r.ipResolverMutex.RLock()
 		defer r.ipResolverMutex.RUnlock()
 		return r.ipResolver.Resolve(domain, qtype, qclass)
-	} else if qtype == dns.TypeTXT {
+	} else if qtype == dns.TypeNS {
 		key := fmt.Sprintf("/domain2onion/%s", domain)
 		resp, err := kv.Get(ctx, key)
 		if err != nil {
 			return nil, fmt.Errorf("etcd GET error qtype=%d: %s", qtype, err)
 		}
 		if len(resp.Kvs) == 0 {
-			return nil, fmt.Errorf("TXT request of unknown domain: %q", domain)
+			return nil, fmt.Errorf("NS request of unknown domain: %q", domain)
 		}
 		onion := string(resp.Kvs[0].Value)
-		txt := fmt.Sprintf("onion=%s", onion)
-		return []string{txt}, nil
+		nameservers := []string{"example.com."} // FIXME store in etcd
+		result := make([]string, len(nameservers))
+		for i := 0; i < len(nameservers); i++ {
+			result[i] = fmt.Sprintf("%s.%s", onion, nameservers[i])
+		}
+		return result, nil
 	} else {
 		return nil, fmt.Errorf("Unknown question type: %d", qtype)
 	}

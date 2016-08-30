@@ -154,10 +154,10 @@ func (m MockSNIParser) ServerNameFromConn(clientConn net.Conn) (string, net.Conn
 	return "Horse25519", clientConn, nil
 }
 
-type MockTxtResolver struct{}
+type MockNsResolver struct{}
 
-func (o MockTxtResolver) LookupTXT(hostname string) ([]string, error) {
-	return []string{"onion=abcdef1234567654.onion"}, nil
+func (o MockNsResolver) LookupNS(hostname string) ([]string, error) {
+	return []string{"abcdef1234567654.onion.example.com"}, nil
 }
 
 type MockProxyDialer struct {
@@ -187,7 +187,7 @@ func TestTLSProxy(t *testing.T) {
 	proxyNet := "tcp"
 	proxy := NewTLSProxy(443, fakeTorNet, fakeTorAddr)
 	proxy.sniParser = MockSNIParser{}
-	proxy.resolver.txtResolver = MockTxtResolver{}
+	proxy.resolver.nsResolver = MockNsResolver{}
 	proxy.dialer = NewMockProxyDialer(fakeTorNet, fakeTorAddr)
 	proxy.Listen(proxyNet, "127.0.0.1:0")
 	go proxy.Start()

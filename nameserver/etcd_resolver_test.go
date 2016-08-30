@@ -151,13 +151,13 @@ func TestEtcdResolver(t *testing.T) {
 	if len(ips) < 1 || ips[0] != "::1" {
 		t.Fatalf("Wrong IPv6 address was returned: %s", ips)
 	}
-	// TXT
-	txts, err := resolver.Resolve("pasta.cf.", dns.TypeTXT, dns.ClassINET)
+	// NS
+	nss, err := resolver.Resolve("pasta.cf.", dns.TypeNS, dns.ClassINET)
 	if err != nil {
-		t.Fatalf("Failed to get TXT record for %q", "pasta.cf.")
+		t.Fatalf("Failed to get NS record for %q", "pasta.cf.")
 	}
-	if txts[0] != "onion=pastagdsp33j7aoq.onion" {
-		t.Fatalf("Wrong TXT response was returned: %s", txts)
+	if nss[0] != "pastagdsp33j7aoq.onion.example.com." {
+		t.Fatalf("Wrong NS response was returned: %s", nss)
 	}
 }
 
@@ -183,10 +183,10 @@ func TestEmptyResolverAbsent(t *testing.T) {
 	if err == nil {
 		t.Fatalf("IPv6 request expected to fail returned %s", ips)
 	}
-	// TXT
-	txts, err := resolver.Resolve("pasta.cf.", dns.TypeTXT, dns.ClassINET)
+	// NS
+	nss, err := resolver.Resolve("pasta.cf.", dns.TypeNS, dns.ClassINET)
 	if err == nil {
-		t.Fatalf("TXT request expected to fail returned %s", txts)
+		t.Fatalf("NS request expected to fail returned %s", nss)
 	}
 }
 

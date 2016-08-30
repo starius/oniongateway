@@ -110,7 +110,7 @@ func (t *TLSProxy) ProcessRequest(clientConn net.Conn) {
 	}
 	onion, err := t.resolver.ResolveToOnion(hostname)
 	if err != nil {
-		log.Printf("Unable to resolve %s using DNS TXT: %s", hostname, err)
+		log.Printf("Unable to resolve %s using DNS: %s", hostname, err)
 		return
 	}
 	log.Printf("%s was resolved to %s", hostname, onion)

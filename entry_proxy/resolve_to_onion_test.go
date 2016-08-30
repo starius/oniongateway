@@ -5,47 +5,47 @@ import (
 	"testing"
 )
 
-type EmptyMockTxtResolver struct{}
+type EmptyMockNsResolver struct{}
 
-func (o EmptyMockTxtResolver) LookupTXT(hostname string) ([]string, error) {
+func (o EmptyMockNsResolver) LookupNS(hostname string) ([]string, error) {
 	return []string{}, nil
 }
 
-func TestEmptyMockTxtResolver(t *testing.T) {
+func TestEmptyMockNsResolver(t *testing.T) {
 	resolver := NewHostToOnionResolver()
-	resolver.txtResolver = EmptyMockTxtResolver{}
+	resolver.nsResolver = EmptyMockNsResolver{}
 	_, err := resolver.ResolveToOnion("example.com")
 	if err == nil {
-		t.Fatal("Empty TXT resolver works, but it must not")
+		t.Fatal("Empty NS resolver works, but it must not")
 	}
 }
 
-type NoOnionsMockTxtResolver struct{}
+type NoOnionsMockNsResolver struct{}
 
-func (o NoOnionsMockTxtResolver) LookupTXT(hostname string) ([]string, error) {
-	return []string{"foo=bar", "bar=foo"}, nil
+func (o NoOnionsMockNsResolver) LookupNS(hostname string) ([]string, error) {
+	return []string{"ns1.example.com", "ns2.eample.com"}, nil
 }
 
-func TestNoOnionsMockTxtResolver(t *testing.T) {
+func TestNoOnionsMockNsResolver(t *testing.T) {
 	resolver := NewHostToOnionResolver()
-	resolver.txtResolver = NoOnionsMockTxtResolver{}
+	resolver.nsResolver = NoOnionsMockNsResolver{}
 	_, err := resolver.ResolveToOnion("example.com")
 	if err == nil {
-		t.Fatal("No-onions TXT resolver works, but it must not")
+		t.Fatal("No-onions NS resolver works, but it must not")
 	}
 }
 
-type ThrowingMockTxtResolver struct{}
+type ThrowingMockNsResolver struct{}
 
-func (o ThrowingMockTxtResolver) LookupTXT(hostname string) ([]string, error) {
+func (o ThrowingMockNsResolver) LookupNS(hostname string) ([]string, error) {
 	return []string{}, errors.New("I always throw")
 }
 
-func TestThrowingMockTxtResolver(t *testing.T) {
+func TestThrowingMockNsResolver(t *testing.T) {
 	resolver := NewHostToOnionResolver()
-	resolver.txtResolver = ThrowingMockTxtResolver{}
+	resolver.nsResolver = ThrowingMockNsResolver{}
 	_, err := resolver.ResolveToOnion("example.com")
 	if err == nil {
-		t.Fatal("Throwing TXT resolver works, but it must not")
+		t.Fatal("Throwing NS resolver works, but it must not")
 	}
 }

@@ -35,13 +35,18 @@ func (r *StaticResolver) Resolve(
 		proxies = r.IPv4Proxies
 	} else if qtype == dns.TypeAAAA {
 		proxies = r.IPv6Proxies
-	} else if qtype == dns.TypeTXT {
+	} else if qtype == dns.TypeNS {
 		onion, ok := r.Domain2Onion[domain]
 		if !ok {
-			return nil, fmt.Errorf("TXT request of unknown domain: %q", domain)
+			return nil, fmt.Errorf("NS request of unknown domain: %q", domain)
 		}
-		txt := fmt.Sprintf("onion=%s", onion)
-		return []string{txt}, nil
+		// FIXME code repeat with etcd_resolver.go
+		nameservers := []string{"example.com."} // FIXME store in etcd
+		result := make([]string, len(nameservers))
+		for i := 0; i < len(nameservers); i++ {
+			result[i] = fmt.Sprintf("%s.%s", onion, nameservers[i])
+		}
+		return result, nil
 	} else {
 		return nil, fmt.Errorf("Unknown question type: %d", qtype)
 	}

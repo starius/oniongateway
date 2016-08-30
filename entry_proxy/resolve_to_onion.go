@@ -6,28 +6,35 @@ import (
 	"regexp"
 )
 
-type TxtResolver interface {
-	LookupTXT(string) ([]string, error)
+type NsResolver interface {
+	LookupNS(string) ([]string, error)
 }
 
-type RealTxtResolver struct{}
+type RealNsResolver struct{}
 
-func (r RealTxtResolver) LookupTXT(hostname string) ([]string, error) {
-	txts, err := net.LookupTXT(hostname)
-	return txts, err
+func (r RealNsResolver) LookupNS(hostname string) ([]string, error) {
+	nss, err := net.LookupNS(hostname)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get %s's NS: %s", hostname, err)
+	}
+	result := make([]string, len(nss))
+	for i := 0; i < len(nss); i++ {
+		result[i] = nss[i].Host
+	}
+	return result, nil
 }
 
 type HostToOnionResolver struct {
 	regex       *regexp.Regexp
-	txtResolver TxtResolver
+	nsResolver NsResolver
 }
 
 func NewHostToOnionResolver() HostToOnionResolver {
 	var err error
 	o := HostToOnionResolver{
-		txtResolver: RealTxtResolver{},
+		nsResolver: RealNsResolver{},
 	}
-	o.regex, err = regexp.Compile("(^| )onion=([a-z0-9]{16}.onion)( |$)")
+	o.regex, err = regexp.Compile("[a-z0-9]{16}.onion")
 	if err != nil {
 		panic("wtf: failed to compile regex")
 	}
@@ -35,19 +42,19 @@ func NewHostToOnionResolver() HostToOnionResolver {
 }
 
 func (o *HostToOnionResolver) ResolveToOnion(hostname string) (onion string, err error) {
-	txts, err := o.txtResolver.LookupTXT(hostname)
+	nss, err := o.nsResolver.LookupNS(hostname)
 	if err != nil {
 		return
 	}
-	if len(txts) == 0 {
-		err = fmt.Errorf("No TXT records for %s", hostname)
+	if len(nss) == 0 {
+		err = fmt.Errorf("No NS records for %s", hostname)
 		return
 	}
-	for _, txt := range txts {
-		match := o.regex.FindStringSubmatch(txt)
-		if match != nil {
-			return match[2], nil // the submatch we are interested in
+	for _, ns := range nss {
+		match := o.regex.FindString(ns)
+		if match != "" {
+			return match, nil
 		}
 	}
-	return "", fmt.Errorf("No suitable TXT records for %s", hostname)
+	return "", fmt.Errorf("No suitable NS records for %s", hostname)
 }
