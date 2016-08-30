@@ -51,14 +51,14 @@ func (r *EtcdResolver) watchFor(
 	watcher := clientv3.NewWatcher(r.Client)
 	ctx := context.Background()
 	const historyStart = 1
-	ipv4Chan := watcher.Watch(
+	etcdChan := watcher.Watch(
 		ctx,
 		prefix,
 		clientv3.WithPrefix(),
 		clientv3.WithRev(historyStart),
 	)
 	for {
-		resp := <-ipv4Chan
+		resp := <-etcdChan
 		if resp.Canceled {
 			break
 		}
