@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"regexp"
+	"strings"
+
+	"github.com/miekg/dns"
 )
 
 type NsResolver interface {
@@ -12,14 +16,48 @@ type NsResolver interface {
 
 type RealNsResolver struct{}
 
-func (r RealNsResolver) LookupNS(hostname string) ([]string, error) {
-	nss, err := net.LookupNS(hostname)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get %s's NS: %s", hostname, err)
+func getParentDomain(domain string) (string, error) {
+	parts := strings.SplitN(domain, ".", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("Failed to split %s to subdomains", domain)
 	}
-	result := make([]string, len(nss))
-	for i := 0; i < len(nss); i++ {
-		result[i] = nss[i].Host
+	if parts[1] == "" {
+		return "", fmt.Errorf("%s is TLD", domain)
+	}
+	return parts[1], nil
+}
+
+func (r RealNsResolver) LookupNS(hostname string) ([]string, error) {
+	parentDomain, err := getParentDomain(hostname)
+	if err != nil {
+		return nil, fmt.Errorf("Can't get %s's parent domain: %s", hostname, err)
+	}
+	nss, err := net.LookupNS(parentDomain)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get %s's NS: %s", parentDomain, err)
+	}
+	if len(nss) == 0 {
+		return nil, fmt.Errorf("There is no NS records for %s", parentDomain)
+	}
+	parentNs := nss[rand.Intn(len(nss))].Host
+	parentServer := net.JoinHostPort(parentNs, "53")
+	message := new(dns.Msg)
+	message.SetQuestion(dns.Fqdn(hostname), dns.TypeNS)
+	message.RecursionDesired = false
+	in, err := dns.Exchange(message, parentServer)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"Unable to get %s's NS from %s: %s",
+			hostname,
+			parentServer,
+			err,
+		)
+	}
+	var result []string
+	for _, record := range in.Ns {
+		if nsRecord, ok := record.(*dns.NS); ok {
+			result = append(result, nsRecord.Ns)
+		}
 	}
 	return result, nil
 }
