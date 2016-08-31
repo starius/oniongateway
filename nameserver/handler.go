@@ -44,7 +44,7 @@ func (h *dnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 					}
 				}
 			} else {
-				log.Printf("Unable to get proxy: %s", err)
+				log.Printf("Unable to proces DNS request: %s", err)
 			}
 		}
 		w.WriteMsg(m)
