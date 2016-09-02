@@ -66,13 +66,17 @@ type TLSProxy struct {
 	listener  net.Listener
 }
 
-func NewTLSProxy(onionPort int, proxyNet, proxyAddr string) *TLSProxy {
+func NewTLSProxy(
+	onionPort int,
+	proxyNet, proxyAddr string,
+	cacheSize int,
+) *TLSProxy {
 	t := TLSProxy{
 		onionPort: onionPort,
 		proxyNet:  proxyNet,
 		proxyAddr: proxyAddr,
 		sniParser: RealSNIParser{},
-		resolver:  NewHostToOnionResolver(),
+		resolver:  NewHostToOnionResolver(cacheSize),
 		dialer:    NewSocksDialer(proxyNet, proxyAddr),
 	}
 	return &t

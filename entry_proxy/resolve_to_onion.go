@@ -7,11 +7,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/coocood/freecache"
 	"github.com/miekg/dns"
 )
 
 type NsResolver interface {
-	LookupNS(string) ([]string, error)
+	LookupNS(string) ([]string, []uint32, error)
 }
 
 type RealNsResolver struct{}
@@ -27,17 +28,24 @@ func getParentDomain(domain string) (string, error) {
 	return parts[1], nil
 }
 
-func (r RealNsResolver) LookupNS(hostname string) ([]string, error) {
+func (r RealNsResolver) LookupNS(hostname string) (
+	names []string,
+	ttls []uint32,
+	err error,
+) {
 	parentDomain, err := getParentDomain(hostname)
 	if err != nil {
-		return nil, fmt.Errorf("Can't get %s's parent domain: %s", hostname, err)
+		err = fmt.Errorf("Can't get %s's parent domain: %s", hostname, err)
+		return
 	}
 	nss, err := net.LookupNS(parentDomain)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get %s's NS: %s", parentDomain, err)
+		err = fmt.Errorf("Unable to get %s's NS: %s", parentDomain, err)
+		return
 	}
 	if len(nss) == 0 {
-		return nil, fmt.Errorf("There is no NS records for %s", parentDomain)
+		err = fmt.Errorf("There is no NS records for %s", parentDomain)
+		return
 	}
 	parentNs := nss[rand.Intn(len(nss))].Host
 	parentServer := net.JoinHostPort(parentNs, "53")
@@ -46,31 +54,34 @@ func (r RealNsResolver) LookupNS(hostname string) ([]string, error) {
 	message.RecursionDesired = false
 	in, err := dns.Exchange(message, parentServer)
 	if err != nil {
-		return nil, fmt.Errorf(
+		err = fmt.Errorf(
 			"Unable to get %s's NS from %s: %s",
 			hostname,
 			parentServer,
 			err,
 		)
+		return
 	}
-	var result []string
 	for _, record := range in.Ns {
 		if nsRecord, ok := record.(*dns.NS); ok {
-			result = append(result, nsRecord.Ns)
+			names = append(names, nsRecord.Ns)
+			ttls = append(ttls, nsRecord.Hdr.Ttl)
 		}
 	}
-	return result, nil
+	return
 }
 
 type HostToOnionResolver struct {
-	regex       *regexp.Regexp
+	regex      *regexp.Regexp
 	nsResolver NsResolver
+	cache      *freecache.Cache
 }
 
-func NewHostToOnionResolver() HostToOnionResolver {
+func NewHostToOnionResolver(cacheSize int) HostToOnionResolver {
 	var err error
 	o := HostToOnionResolver{
 		nsResolver: RealNsResolver{},
+		cache:      freecache.NewCache(cacheSize),
 	}
 	o.regex, err = regexp.Compile("[a-z0-9]{16}.onion")
 	if err != nil {
@@ -80,7 +91,11 @@ func NewHostToOnionResolver() HostToOnionResolver {
 }
 
 func (o *HostToOnionResolver) ResolveToOnion(hostname string) (onion string, err error) {
-	nss, err := o.nsResolver.LookupNS(hostname)
+	key := []byte(hostname)
+	if cachedOnion, err := o.cache.Get(key); err == nil {
+		return string(cachedOnion), nil
+	}
+	nss, ttls, err := o.nsResolver.LookupNS(hostname)
 	if err != nil {
 		return
 	}
@@ -88,9 +103,12 @@ func (o *HostToOnionResolver) ResolveToOnion(hostname string) (onion string, err
 		err = fmt.Errorf("No NS records for %s", hostname)
 		return
 	}
-	for _, ns := range nss {
+	for i, ns := range nss {
 		match := o.regex.FindString(ns)
 		if match != "" {
+			value := []byte(match)
+			ttl := int(ttls[i])
+			_ = o.cache.Set(key, value, ttl)
 			return match, nil
 		}
 	}

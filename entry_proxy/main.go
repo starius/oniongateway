@@ -42,6 +42,11 @@ func main() {
 			443,
 			"Port on onion site to use",
 		)
+		cacheMb = flag.Int(
+			"cache-mb",
+			10,
+			"In-memory cache size for host->onion map (MB)",
+		)
 	)
 
 	flag.Parse()
@@ -55,7 +60,8 @@ func main() {
 		go redirectingServer.ListenAndServe()
 	}
 
-	proxy := NewTLSProxy(*onionPort, *proxyNet, *proxyAddr)
+	cacheBytes := *cacheMb * 1024 * 1024
+	proxy := NewTLSProxy(*onionPort, *proxyNet, *proxyAddr, cacheBytes)
 	proxy.Listen("tcp", *entryProxy)
 	proxy.Start()
 }
