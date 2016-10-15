@@ -119,7 +119,6 @@ func (r *EtcdResolver) Resolve(
 	[]string,
 	error,
 ) {
-	kv := clientv3.NewKV(r.Client)
 	ctx, cancel := context.WithTimeout(context.Background(), r.Timeout)
 	defer cancel()
 	r.staticResolverMutex.RLock()
@@ -128,7 +127,7 @@ func (r *EtcdResolver) Resolve(
 		return r.staticResolver.Resolve(domain, qtype, qclass)
 	} else if qtype == dns.TypeNS {
 		key := fmt.Sprintf("/domain2onion/%s", domain)
-		resp, err := kv.Get(ctx, key)
+		resp, err := r.Client.Get(ctx, key)
 		if err != nil {
 			return nil, fmt.Errorf("etcd GET error qtype=%d: %s", qtype, err)
 		}

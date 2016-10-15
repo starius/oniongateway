@@ -92,18 +92,16 @@ func changeDatabase(
 }
 
 func populateDatabase(client *clientv3.Client, kvs map[string]string) error {
-	kv := clientv3.NewKV(client)
 	action := func(ctx context.Context, key string, value string) error {
-		_, err := kv.Put(ctx, key, value)
+		_, err := client.Put(ctx, key, value)
 		return err
 	}
 	return changeDatabase(action, kvs)
 }
 
 func deleteKeys(client *clientv3.Client, kvs map[string]string) error {
-	kv := clientv3.NewKV(client)
 	action := func(ctx context.Context, key string, _ string) error {
-		_, err := kv.Delete(ctx, key)
+		_, err := client.Delete(ctx, key)
 		return err
 	}
 	return changeDatabase(action, kvs)
